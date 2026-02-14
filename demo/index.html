@@ -16,32 +16,20 @@
 		<!-- Workbench Icon/Manifest/CSS -->
 		<link rel="icon" href="/favicon.ico" type="image/x-icon" />
 		<link rel="manifest" href="/manifest.json">
-		<link data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="./static/out/vs/workbench/workbench.web.main.css">
-
+		<link data-name="vs/workbench/workbench.web.main" rel="stylesheet" href="./static/out/vs/workbench/workbench.web.main.internal.css">
 	</head>
 
 	<body aria-label="">
+		<!-- Workbench reads config from this element (see vs/code/browser/workbench/workbench.ts) -->
+		<div id="vscode-workbench-web-configuration" data-settings="{&quot;callbackRoute&quot;:&quot;/callback&quot;,&quot;folderUri&quot;:{&quot;scheme&quot;:&quot;memfs&quot;,&quot;path&quot;:&quot;/sample-folder&quot;,&quot;query&quot;:&quot;&quot;,&quot;fragment&quot;:&quot;&quot;},&quot;additionalBuiltinExtensions&quot;:[{&quot;scheme&quot;:&quot;http&quot;,&quot;authority&quot;:&quot;localhost:9292&quot;,&quot;path&quot;:&quot;/static/extensions/vscode-web-playground&quot;}]}"></div>
 	</body>
 
-	<!-- Startup (do not modify order of script tags!) -->
-	<script src="./static/out/vs/loader.js"></script>
-	<script src="./static/out/vs/webPackagePaths.js"></script>
+	<!-- FileAccess.asFileUri() needs this to resolve module paths (vs/base/common/network.ts) -->
 	<script>
-		Object.keys(self.webPackagePaths).map(function (key, index) {
-			self.webPackagePaths[key] = `${window.location.origin}/static/node_modules/${key}/${self.webPackagePaths[key]}`;
-		});
-		require.config({
-			baseUrl: `${window.location.origin}/static/out`,
-			recordStats: true,
-			trustedTypesPolicy: window.trustedTypes?.createPolicy('amdLoader', {
-				createScriptURL(value) {
-					return value;
-				}
-			}),
-			paths: self.webPackagePaths
-		});
+		globalThis._VSCODE_FILE_ROOT = new URL('./static/out/', window.location.href).toString();
 	</script>
+	<!-- NLS: must run before workbench so globalThis._VSCODE_NLS_MESSAGES is set -->
 	<script src="./static/out/nls.messages.js"></script>
-	<script src="./static/out/vs/workbench/workbench.web.main.js"></script>
-	<script src="./static/out/vs/code/browser/workbench/workbench.js"></script>
+	<!-- ESM entry: workbench.js reads the config element and calls create() -->
+	<script type="module" src="./static/out/vs/code/browser/workbench/workbench.js"></script>
 </html>

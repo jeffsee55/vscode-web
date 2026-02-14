@@ -35,10 +35,16 @@ See the [product.json](sample/product.json) file in `sample` folder to configure
 
 ## Build from source
 
-To build from source, you need same prerequisites as vscode : 
-[VSCode Prerequisites](https://github.com/microsoft/vscode/wiki/How-to-Contribute#prerequisites)
+The build clones the [VS Code repo](https://github.com/microsoft/vscode), runs its web build, and copies the output into `dist/`. You need the same prerequisites as VS Code:
 
-Then simply run following commands
+- **Node.js** 20–22 (Node 24+ breaks native addons; use `nvm use 22` if needed)
+- **Yarn**
+- **Git**
+- **Python** (required by node-gyp when building VS Code’s native dependencies)
+
+See [VSCode Prerequisites](https://github.com/microsoft/vscode/wiki/How-to-Contribute#prerequisites) for your OS.
+
+Then run:
 
 ```
 yarn

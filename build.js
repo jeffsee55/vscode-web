@@ -34,8 +34,13 @@ ok("required tools installed");
 
 const node_version_out = child_process.execSync(`node -v`);
 const node_version = node_version_out.toString().trim();
-if (node_version < "v20.0") {
-  error(`Want node > 20. Got "${node_version}"`);
+const nodeMajor = parseInt(node_version.slice(1).split(".")[0], 10);
+if (nodeMajor < 20) {
+  error(`Need Node 20 or higher. Got "${node_version}"`);
+  process.exit(1);
+}
+if (nodeMajor > 22) {
+  error(`VS Code build expects Node 20–22 (see vscode/.nvmrc). Node 24+ breaks native addons (e.g. tree-sitter). Got "${node_version}". Use: nvm install 22 && nvm use 22`);
   process.exit(1);
 }
 
@@ -56,7 +61,8 @@ note("changing directory to vscode");
 process.chdir("vscode");
 
 if (!fs.existsSync("node_modules")) {
-  exec("yarn", {
+  note("installing dependencies (npm)");
+  exec("npm ci", {
     stdio: "inherit",
     env: {
       ...process.env,
@@ -65,20 +71,37 @@ if (!fs.existsSync("node_modules")) {
     },
   });
 } else {
-  ok("node_modules exists. Skipping yarn");
+  ok("node_modules exists. Skipping npm ci");
 }
 
-// Use simple workbench
-note("copying workbench file");
-fs.copyFileSync(
-  "../workbench.ts",
-  "src/vs/code/browser/workbench/workbench.ts"
-);
+// Ensure upstream workbench is used (restore if it was patched in a previous run).
+note("restoring upstream workbench.ts");
+exec("git checkout src/vs/code/browser/workbench/workbench.ts", { stdio: "inherit" });
+
+// Temporarily add codeWeb entry point so the build produces workbench.js (demo bootstrap).
+// We patch the gulpfile here instead of in the vscode repo so the submodule stays clean.
+const gulpfilePath = "build/gulpfile.vscode.web.ts";
+let gulpfilePatched = false;
+if (fs.existsSync(gulpfilePath)) {
+  let content = fs.readFileSync(gulpfilePath, "utf8");
+  const marker = "buildfile.workbenchWeb,\n].flat();";
+  if (content.includes(marker) && !content.includes("buildfile.codeWeb")) {
+    content = content.replace(marker, "buildfile.workbenchWeb,\n\tbuildfile.codeWeb,\n].flat();");
+    fs.writeFileSync(gulpfilePath, content);
+    gulpfilePatched = true;
+    note("patched gulpfile.vscode.web.ts to add codeWeb entry point");
+  }
+}
 
 // Compile
 note("starting compile");
-exec("yarn gulp vscode-web-min", { stdio: "inherit" });
+exec("npm run gulp -- vscode-web-min", { stdio: "inherit" });
 ok("compile completed");
+
+if (gulpfilePatched) {
+  note("restoring gulpfile.vscode.web.ts");
+  exec("git checkout build/gulpfile.vscode.web.ts", { stdio: "inherit" });
+}
 
 // Extract compiled files
 if (fs.existsSync("../dist")) {

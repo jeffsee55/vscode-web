@@ -1,3 +1,5 @@
+// @ts-nocheck
+// Legacy; build uses upstream workbench (see build.js)
 import {
   create
 } from "vs/workbench/workbench.web.main";
