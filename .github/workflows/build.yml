@@ -1,5 +1,6 @@
 # Build VS Code web (gulp vscode-web-min) and produce dist/
 # Runs on push to main and on workflow_dispatch.
+# First run is slow (clone + npm ci + gulp); later runs use cache when version unchanged.
 
 name: Build
 
@@ -11,6 +12,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6h max; full build can take 2–4+ hours
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,11 +33,25 @@ jobs:
       - name: Install project dependencies
         run: npm ci
 
-      - name: Build (clone vscode, compile, copy to dist)
+      - name: Restore vscode cache
+        uses: actions/cache/restore@v4
+        id: vscode-cache
+        with:
+          path: vscode
+          key: vscode-${{ hashFiles('package.json') }}
+
+      - name: Build (clone vscode if needed, compile, copy to dist)
         run: node build.js
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+
+      - name: Save vscode cache
+        uses: actions/cache/save@v4
+        if: always() && steps.vscode-cache.outputs.cache-hit != 'true'
+        with:
+          path: vscode
+          key: vscode-${{ hashFiles('package.json') }}
 
       - name: Upload dist
         uses: actions/upload-artifact@v4
